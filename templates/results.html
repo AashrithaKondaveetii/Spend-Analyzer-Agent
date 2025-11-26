@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receipt Results - Spend Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="/">Spend Analyzer</a>
+        </div>
+    </nav>
+
+    <div class="container d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+        <div class="card p-4" style="width: 100%; max-width: 500px;">
+            <h1 class="text-primary text-center mb-4">Receipt Analysis Results</h1>
+            {% for receipt in receipts %}
+            <div class="receipt-details mb-4">
+                <p><strong>Merchant Name:</strong> {{ receipt["Merchant Name"] }}</p>
+                <p><strong>Transaction Date:</strong> {{ receipt["Transaction Date"] }}</p>
+                <p><strong>Number of Items:</strong> {{ receipt["Number of Items"] }}</p>
+                <p><strong>Total:</strong> ${{ receipt["Total"] }}</p>
+                <p><strong>Receipt:</strong> <a href="{{ receipt['Receipt URL'] }}" target="_blank" class="btn btn-link">View Receipt</a></p>
+            </div>
+            {% endfor %}
+            <div class="text-center mt-4">
+                <a href="/" class="btn btn-secondary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

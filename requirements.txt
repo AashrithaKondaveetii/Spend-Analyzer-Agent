@@ -1,0 +1,13 @@
+Flask
+Authlib
+python-dotenv
+azure-ai-documentintelligence
+azure-core
+google-cloud-datastore
+requests-oauthlib
+werkzeug
+gunicorn
+google-cloud-bigquery
+matplotlib
+azure-ai-formrecognizer
+google-cloud-storage
