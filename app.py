@@ -13,10 +13,19 @@ from google.cloud import bigquery, storage
 from models import create_bigquery_dataset, create_bigquery_table, insert_into_bigquery, upload_to_bucket, BUCKET_NAME,PROJECT_ID, DATASET_ID, TABLE_ID, FULL_TABLE_ID
 import os
 
+from agents.ocr_agent import OcrExtractionAgent
+from agents.categorization_agent import CategorizationValidationAgent
+from agents.orchestrator_agent import OrchestrationAgent
+from observability.logging_config import setup_logging
+
 load_dotenv()
 app = Flask(__name__)
 
 app.secret_key = os.urandom(24)
+
+# Configure logging for the whole app
+setup_logging()
+
 
 client_id = os.environ.get("CLIENT_ID")
 client_secret = os.environ.get("CLIENT_SECRET")
@@ -24,12 +33,18 @@ redirect_callback = os.environ.get("REDIRECT_CALLBACK")
 authorization_base_url = os.environ.get("AUTHORIZATION_BASE_URL", "https://accounts.google.com/o/oauth2/auth")
 token_url = os.environ.get("TOKEN_URL", "https://accounts.google.com/o/oauth2/token")
 
+
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 
 endpoint = os.environ.get("AZURE_FORM_RECOGNIZER_ENDPOINT")
 key = os.environ.get("AZURE_FORM_RECOGNIZER_KEY")
 
 document_analysis_client = DocumentAnalysisClient(endpoint=endpoint, credential=AzureKeyCredential(key))
+
+
+ocr_agent = OcrExtractionAgent(document_analysis_client)
+categorization_agent = CategorizationValidationAgent()
+orchestrator_agent = OrchestrationAgent(ocr_agent, categorization_agent)
 
 @app.route('/')
 def index():
@@ -55,67 +70,37 @@ def upload_receipt():
     if 'oauth_token' not in session:
         return redirect(url_for('login'))
 
-    """Upload receipt image, save it to GCS, and process it."""
     if 'user_email' not in session:
         return redirect(url_for('login'))
 
     user_email = session.get('user_email')
 
-    """Upload receipt image, save it to GCS, and process it."""
     if request.method == 'POST':
         if 'receipt_image' not in request.files:
             return render_template('upload_receipt.html', error="No file selected.")
+
         file = request.files['receipt_image']
+
         if file.filename == '':
             return render_template('upload_receipt.html', error="No file selected.")
-        try:
-            destination_blob_name = f"uploads/{file.filename}"
-            public_url = upload_to_bucket(file, destination_blob_name)
 
-            file.seek(0)
+        # === NEW MULTI-AGENT PIPELINE CALL ===
+        destination_blob_name = f"uploads/{file.filename}"
 
-            poller = document_analysis_client.begin_analyze_document("prebuilt-receipt", document=file)
-            receipts = poller.result()
+        receipt_details, error = orchestrator_agent.process_receipt(
+            file_obj=file,
+            user_email=user_email,
+            flask_session=session,
+            destination_blob_name=destination_blob_name
+        )
 
-            receipt_details = []
-            for receipt in receipts.documents:
-                receipt_data = {}
-                merchant_name = receipt.fields.get("MerchantName")
-                merchant_name = merchant_name.value if merchant_name else "N/A"
-                receipt_data["Merchant Name"] = merchant_name
+        if error:
+            return render_template('upload_receipt.html', error=error)
 
-                transaction_date = receipt.fields.get("TransactionDate")
-                if transaction_date and transaction_date.value:
-                    transaction_date_value = transaction_date.value
-                    if isinstance(transaction_date_value, date):
-                        transaction_date = datetime.combine(transaction_date_value, datetime.min.time())
-                    elif isinstance(transaction_date_value, datetime):
-                        transaction_date = transaction_date_value
-                    else:
-                        transaction_date = "N/A"
-                else:
-                    transaction_date = "N/A"
-                receipt_data["Transaction Date"] = transaction_date
-
-                items = receipt.fields.get("Items").value if receipt.fields.get("Items") else []
-                receipt_data["Number of Items"] = len(items)
-
-                subtotal = receipt.fields.get("Subtotal")
-                receipt_data["Total"] = subtotal.value if subtotal else "N/A"
-
-                receipt_data["Receipt URL"] = public_url
-
-                receipt_data["User Email"] = user_email
-                receipt_details.append(receipt_data)
-                insert_into_bigquery(receipt_data)
-
-            return render_template('results.html', receipts=receipt_details)
-
-        except Exception as e:
-            return render_template('upload_receipt.html', error=f"Error processing receipt: {e}")
+        # Same as before — results.html stays unchanged
+        return render_template('results.html', receipts=receipt_details)
 
     return render_template('upload_receipt.html')
-
 
 
 @app.route('/view_receipts')
