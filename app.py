@@ -17,6 +17,7 @@ from agent.ocr_agent import OcrExtractionAgent
 from agent.categorization_agent import CategorizationValidationAgent
 from agent.orchestrator_agent import OrchestrationAgent
 from observability.logging_config import setup_logging
+from models import REPORT_BUCKET_NAME
 
 load_dotenv()
 app = Flask(__name__)
@@ -33,6 +34,7 @@ redirect_callback = os.environ.get("REDIRECT_CALLBACK")
 authorization_base_url = os.environ.get("AUTHORIZATION_BASE_URL", "https://accounts.google.com/o/oauth2/auth")
 token_url = os.environ.get("TOKEN_URL", "https://accounts.google.com/o/oauth2/token")
 
+report_bucket_name = os.environ.get("REPORT_BUCKET_NAME")
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 
@@ -120,11 +122,12 @@ def view_receipts():
             `Merchant Name` AS merchant_name,
             `Transaction Date` AS transaction_date,
             `Number of Items` AS num_items,
+            `Category` AS category,
             `Total` AS total,
             `Receipt URL` AS receipt_url
         FROM `{FULL_TABLE_ID}`
         WHERE `User Email` = @user_email
-        ORDER BY transaction_date DESC
+        ORDER BY id ASC
     """
     query_job = client.query(query, job_config=bigquery.QueryJobConfig(
         query_parameters=[bigquery.ScalarQueryParameter("user_email", "STRING", user_email)]
@@ -138,11 +141,27 @@ def view_receipts():
             "merchant_name": row.merchant_name,
             "transaction_date": row.transaction_date,
             "num_items": row.num_items,
+            "category": row.category,
             "total": row.total,
             "receipt_url": row.receipt_url
         })
 
     return render_template('view_receipts.html', receipts=receipt_list)
+
+@app.route('/delete_receipt/<int:receipt_id>', methods=['POST'])
+def delete_receipt(receipt_id):
+    if 'oauth_token' not in session:
+        return redirect(url_for('login'))
+
+    from models import delete_receipt_from_bigquery
+
+    try:
+        delete_receipt_from_bigquery(receipt_id)
+    except Exception as e:
+        print("Error deleting receipt:", e)
+
+    return redirect('/view_receipts')
+
 
 
 
@@ -163,6 +182,7 @@ def generate_report():
         return redirect(url_for('login'))
 
     client = bigquery.Client()
+    
 
     store_query = f"""
         SELECT 
@@ -176,6 +196,7 @@ def generate_report():
     """
     store_query_job = client.query(store_query)
     store_results = store_query_job.result()
+    
 
     store_labels = []
     store_values = []
@@ -205,11 +226,11 @@ def generate_report():
     pie_buffer.seek(0)
 
     pie_blob_name = f"report_pie_chart_{user_email}.png"
-    pie_bucket = storage.Client().bucket("spend-analyzer-bucket")
+    pie_bucket = storage.Client().bucket(report_bucket_name)
     pie_blob = pie_bucket.blob(pie_blob_name)
     pie_blob.upload_from_file(pie_buffer, content_type='image/png')
-    pie_blob.make_public()
-    pie_chart_url = pie_blob.public_url
+    pie_chart_url = pie_blob.generate_signed_url(expiration=3600*24*7)
+    # pie_chart_url = pie_blob.public_url
 
     monthly_query = f"""
         SELECT 
@@ -226,6 +247,8 @@ def generate_report():
     months = []
     totals = []
     for row in monthly_results:
+        if not row.month:   # skip None, empty, invalid values
+            continue
         months.append(row.month)
         totals.append(row.monthly_total)
 
@@ -248,8 +271,7 @@ def generate_report():
     line_blob_name = f"monthly_expenses_line_chart_{user_email}.png"
     line_blob = pie_bucket.blob(line_blob_name)
     line_blob.upload_from_file(line_buffer, content_type='image/png')
-    line_blob.make_public()
-    line_chart_url = line_blob.public_url
+    line_chart_url = line_blob.generate_signed_url(expiration=3600*24*7)
 
     return render_template(
         'report.html',
@@ -257,6 +279,7 @@ def generate_report():
         line_chart_url=line_chart_url,
         error=None
     )
+
 
 
 

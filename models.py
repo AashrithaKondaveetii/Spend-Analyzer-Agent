@@ -17,6 +17,9 @@ FULL_TABLE_ID = os.getenv("FULL_TABLE_ID")
 
 BUCKET_NAME = os.getenv("BUCKET_NAME")
 
+REPORT_BUCKET_NAME = os.getenv("REPORT_BUCKET_NAME")
+
+
 def create_bigquery_dataset():
     """Create the BigQuery dataset if it doesn't exist."""
     client = bigquery.Client()
@@ -37,6 +40,7 @@ def create_bigquery_table():
         bigquery.SchemaField("Merchant Name", "STRING"),
         bigquery.SchemaField("Transaction Date", "DATETIME"),
         bigquery.SchemaField("Number of Items", "INTEGER"),
+        bigquery.SchemaField("Category", "STRING"),
         bigquery.SchemaField("Total", "FLOAT"),
         bigquery.SchemaField("Receipt URL", "STRING"),
         bigquery.SchemaField("User Email", "STRING"),
@@ -71,6 +75,7 @@ def insert_into_bigquery(receipt_data):
             "Transaction Date": receipt_data["Transaction Date"].strftime("%Y-%m-%d %H:%M:%S")
             if receipt_data["Transaction Date"] != "N/A" else None,
             "Number of Items": receipt_data["Number of Items"],
+            "Category": receipt_data["Category"],
             "Total": float(receipt_data["Total"]) if receipt_data["Total"] != "N/A" else None,
             "Receipt URL": receipt_data["Receipt URL"],
             "User Email": receipt_data["User Email"],
@@ -90,3 +95,19 @@ def upload_to_bucket(file, destination_blob_name):
     public_url = blob.public_url
     print(f"File {destination_blob_name} uploaded to {BUCKET_NAME}. Public URL: {public_url}")
     return public_url
+
+def delete_receipt_from_bigquery(receipt_id):
+    client = bigquery.Client()
+
+    query = f"""
+        DELETE FROM `{FULL_TABLE_ID}`
+        WHERE id = @receipt_id
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("receipt_id", "INT64", receipt_id)
+        ]
+    )
+
+    client.query(query, job_config=job_config).result()
