@@ -13,9 +13,9 @@ from google.cloud import bigquery, storage
 from models import create_bigquery_dataset, create_bigquery_table, insert_into_bigquery, upload_to_bucket, BUCKET_NAME,PROJECT_ID, DATASET_ID, TABLE_ID, FULL_TABLE_ID
 import os
 
-from agents.ocr_agent import OcrExtractionAgent
-from agents.categorization_agent import CategorizationValidationAgent
-from agents.orchestrator_agent import OrchestrationAgent
+from agent.ocr_agent import OcrExtractionAgent
+from agent.categorization_agent import CategorizationValidationAgent
+from agent.orchestrator_agent import OrchestrationAgent
 from observability.logging_config import setup_logging
 
 load_dotenv()

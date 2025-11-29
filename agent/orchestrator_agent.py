@@ -34,6 +34,7 @@ class OrchestrationAgent:
             file_obj.seek(0)
 
             # 2) Run OCR via Agent 1
+            self.logger.info("Orchestrator → OCR-Agent: Starting OCR extraction")
             session_memory.set_pending_stage("ocr")
             ocr_results = self.ocr_agent.run(file_obj)
 
@@ -57,8 +58,11 @@ class OrchestrationAgent:
                     metrics.record_retry()
 
                 # 3) Run categorization via Agent 2
+                self.logger.info("Orchestrator → Categorization-Agent: Sending OCR output for categorization")
                 session_memory.set_pending_stage("categorization")
                 enriched = self.categorization_agent.run(user_email=user_email, ocr_result=ocr_result)
+                self.logger.info("Categorization-Agent → Orchestrator: Returning validated receipt data")
+
 
                 # 4) Add persistent fields
                 enriched["Receipt URL"] = public_url

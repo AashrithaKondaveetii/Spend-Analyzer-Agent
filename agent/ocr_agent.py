@@ -1,5 +1,7 @@
 import logging
 from datetime import datetime, date
+import re
+
 
 class OcrExtractionAgent:
     """
@@ -24,6 +26,22 @@ class OcrExtractionAgent:
         self.logger.info("OcrExtractionAgent: starting OCR analysis")
         poller = self.client.begin_analyze_document("prebuilt-receipt", document=file_obj)
         result = poller.result()
+        
+        confidences = []
+        for page in result.pages:
+            for line in page.lines:
+                if hasattr(line, "content") and hasattr(line, "confidence"):
+                    confidences.append(line.confidence)
+        avg_confidence = sum(confidences) / len(confidences) if confidences else 1.0
+
+        if avg_confidence < 0.70:
+            self.logger.warning(
+                f"OcrExtractionAgent: Low OCR confidence ({avg_confidence}). Retrying once..."
+            )
+            # Re-run OCR once more
+            poller_retry = self.client.begin_analyze_document("prebuilt-receipt", document=file_obj)
+            result = poller_retry.result()
+
 
         receipts_data = []
 
@@ -55,9 +73,31 @@ class OcrExtractionAgent:
             data["num_items"] = len(items)
 
             # Total / subtotal
-            subtotal_field = receipt.fields.get("Subtotal")
-            total = subtotal_field.value if subtotal_field else "N/A"
-            data["total"] = total
+            # subtotal_field = receipt.fields.get("Subtotal")
+            # total = subtotal_field.value if subtotal_field else "N/A"
+            # data["total"] = total
+            
+            full_text = receipt.content if hasattr(receipt, "content") else ""
+            total_amount = None
+            print("\n=== AZURE RAW TEXT ===\n", full_text, "\n========================\n")
+            
+            
+            for line in full_text.split("\n"):
+                line = line.strip()
+                match = re.search(r"TOTAL\s+([0-9]+\.[0-9]{2})", line, re.IGNORECASE)
+                if match:
+                    total_amount = float(match.group(1))
+                    break
+            if not total_amount:
+                try:
+                    item_sum = sum([float(item["price"]) for item in data.get("items", [])])
+                    data["total"] = round(item_sum, 2)
+                    self.logger.info(f"No total found; using item sum = {item_sum}")
+                except:
+                    data["total"] = None
+                    self.logger.warning("Total could not be extracted or computed.")
+            else:
+                data["total"] = total_amount
 
             # Overall OCR confidence (best-effort) - accuracy metric
             ocr_confidence = getattr(receipt, "confidence", None)
@@ -66,7 +106,7 @@ class OcrExtractionAgent:
             
             self.logger.info(
                 "OcrExtractionAgent: extracted receipt - merchant=%s, date=%s, total=%s, confidence=%s",
-                merchant_name, transaction_date, total, ocr_confidence
+                merchant_name, transaction_date, data.get("total"), ocr_confidence
             )
 
             receipts_data.append(data)

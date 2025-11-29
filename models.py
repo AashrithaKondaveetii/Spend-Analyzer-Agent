@@ -6,14 +6,16 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 from dotenv import load_dotenv
 
+load_dotenv()
+
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 
-PROJECT_ID = "cloud-aashritk"
-DATASET_ID = "receipts_dataset"
-TABLE_ID = "receipts"
-FULL_TABLE_ID = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
+PROJECT_ID = os.getenv("PROJECT_ID")
+DATASET_ID = os.getenv("DATASET_ID")
+TABLE_ID = os.getenv("TABLE_ID")
+FULL_TABLE_ID = os.getenv("FULL_TABLE_ID")
 
-BUCKET_NAME = "receipt-uploads-bucket"
+BUCKET_NAME = os.getenv("BUCKET_NAME")
 
 def create_bigquery_dataset():
     """Create the BigQuery dataset if it doesn't exist."""
