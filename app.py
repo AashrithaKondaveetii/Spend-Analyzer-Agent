@@ -18,6 +18,7 @@ from agent.categorization_agent import CategorizationValidationAgent
 from agent.orchestrator_agent import OrchestrationAgent
 from observability.logging_config import setup_logging
 from models import REPORT_BUCKET_NAME
+from agent.adk_expense_agent import run_expense_query
 
 load_dotenv()
 app = Flask(__name__)
@@ -48,11 +49,35 @@ ocr_agent = OcrExtractionAgent(document_analysis_client)
 categorization_agent = CategorizationValidationAgent()
 orchestrator_agent = OrchestrationAgent(ocr_agent, categorization_agent)
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    """Home page."""
-    user_info = session.get('userinfo', None)
-    return render_template('index.html')
+    answer = None
+
+    if request.method == "POST":
+        if "user_email" not in session:
+            return redirect(url_for('login'))
+
+        user_email = session["user_email"]
+
+        # create session_id if missing
+        if "session_id" not in session:
+            import uuid
+            session["session_id"] = str(uuid.uuid4())
+
+        session_id = session["session_id"]
+        user_message = request.form.get("message", "")
+
+        if user_message:
+            answer = run_expense_query(
+                user_id=user_email,
+                session_id=session_id,
+                text=user_message
+            )
+
+    return render_template(
+        'index.html',
+        answer=answer
+    )
 
 @app.route('/login')
 def login():

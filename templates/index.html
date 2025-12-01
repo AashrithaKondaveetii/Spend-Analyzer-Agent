@@ -1,49 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Spend Analyzer</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Montserrat:wght@300;400;500&display=swap" rel="stylesheet">
-</head>
-<body>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Montserrat:wght@300;400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">Spend Analyzer</a>
-            <div class="ml-auto">
-            {% if session['user_email'] %}
-                <span class="navbar-text text-light me-3">
-                    Welcome, {{ session['user_name'] }}!
-                </span>
-                <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
-            {% else %}
-                <a href="/login" class="btn btn-light btn-sm">Login</a>
-            {% endif %}
+      <div class="container-fluid">
+        <a class="navbar-brand" href="#">Spend Analyzer</a>
+        <div class="ml-auto">
+          {% if session['user_email'] %}
+          <span class="navbar-text text-light me-3">
+            Welcome, {{ session['user_name'] }}!
+          </span>
+          <a href="/logout" class="btn btn-danger btn-sm">Logout</a>
+          {% else %}
+          <a href="/login" class="btn btn-light btn-sm">Login</a>
+          {% endif %}
         </div>
-        </div>
+      </div>
     </nav>
     <header class="bg-light py-4">
-        <div class="container text-center">
-            <h1 class="display-5 fw-bold text-primary">Welcome to Spend Analyzer</h1>
-            <p class="lead">Easily manage, analyze, and track your spending with receipts</p>
-        </div>
+      <div class="container text-center">
+        <h1 class="display-5 fw-bold text-primary">
+          Welcome to Spend Analyzer
+        </h1>
+        <p class="lead">
+          Easily manage, analyze, and track your spending with receipts
+        </p>
+      </div>
     </header>
     <main>
-        <div class="container py-3">
-            <div class="row justify-content-center text-center index-buttons">
-                <div class="col-md-4 mb-3">
-                    <a href="/upload" class="btn btn-primary btn-lg custom-index-button">Upload a Receipt</a>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <a href="/view_receipts" class="btn btn-secondary btn-lg custom-index-button">View Stored Receipts</a>
-                </div>
-                <div class="col-md-4 mb-3">
-                    <a href="/generate_report" class="btn btn-success btn-lg custom-index-button">Generate Report</a>
-                </div>
-            </div>
+      <div class="container py-3">
+        <div class="row justify-content-center text-center index-buttons">
+          <div class="col-md-4 mb-3">
+            <a href="/upload" class="btn btn-primary btn-lg custom-index-button"
+              >Upload a Receipt</a
+            >
+          </div>
+          <div class="col-md-4 mb-3">
+            <a
+              href="/view_receipts"
+              class="btn btn-secondary btn-lg custom-index-button"
+              >View Stored Receipts</a
+            >
+          </div>
+          <div class="col-md-4 mb-3">
+            <a
+              href="/generate_report"
+              class="btn btn-success btn-lg custom-index-button"
+              >Generate Report</a
+            >
+          </div>
         </div>
+      </div>
+
+      <!-- AI Chatbot Section -->
+      <div class="container py-4">
+        <div class="card shadow p-4" style="max-width: 700px; margin: 0 auto">
+          <h3 class="text-primary text-center mb-3">
+            Ask Your AI Expense Assistant
+          </h3>
+
+          <form method="POST" action="/">
+            <div class="input-group mb-3">
+              <input
+                type="text"
+                class="form-control"
+                name="message"
+                placeholder="Example: How much did I spend at Starbucks?"
+                required
+              />
+              <button class="btn btn-primary" type="submit">Ask</button>
+            </div>
+          </form>
+
+          {% if answer %}
+          <div class="alert alert-info mt-3">
+            <strong>AI Response:</strong><br />
+            {{ answer }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
     </main>
-</body>
+  </body>
 </html>
