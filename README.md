@@ -264,7 +264,7 @@ Click "Generate Report" to see:
 
 ## Authors
 
-**Aashritha Kondaveeti**
+**Aashritha Kondaveeti**, 
 **Sumana Sanyasipura Nagaraju**
 
 Built as part of the [5-Day AI Agents Intensive Course with Google]
