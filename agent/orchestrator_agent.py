@@ -73,6 +73,7 @@ class OrchestrationAgent:
                     "Merchant Name": enriched["merchant_name"],
                     "Transaction Date": enriched["transaction_date"],
                     "Number of Items": enriched["num_items"],
+                    "Category": enriched["category"],
                     "Total": enriched["total"],
                     "Receipt URL": enriched["Receipt URL"],
                     "User Email": enriched["User Email"],

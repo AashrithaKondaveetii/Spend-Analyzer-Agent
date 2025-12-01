@@ -5,7 +5,7 @@ from logout import Logout
 from oauth_config import client_id, authorization_base_url, redirect_callback
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.formrecognizer import DocumentAnalysisClient
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import matplotlib.pyplot as plt
 from io import BytesIO
 from dotenv import load_dotenv
@@ -254,7 +254,7 @@ def generate_report():
     pie_bucket = storage.Client().bucket(report_bucket_name)
     pie_blob = pie_bucket.blob(pie_blob_name)
     pie_blob.upload_from_file(pie_buffer, content_type='image/png')
-    pie_chart_url = pie_blob.generate_signed_url(expiration=3600*24*7)
+    pie_chart_url = pie_blob.generate_signed_url(expiration=timedelta(days=7))
     # pie_chart_url = pie_blob.public_url
 
     monthly_query = f"""
@@ -296,7 +296,7 @@ def generate_report():
     line_blob_name = f"monthly_expenses_line_chart_{user_email}.png"
     line_blob = pie_bucket.blob(line_blob_name)
     line_blob.upload_from_file(line_buffer, content_type='image/png')
-    line_chart_url = line_blob.generate_signed_url(expiration=3600*24*7)
+    line_chart_url = line_blob.generate_signed_url(expiration=timedelta(days=7))
 
     return render_template(
         'report.html',
